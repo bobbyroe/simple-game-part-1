@@ -28,6 +28,8 @@ function getRocketBolt(rocket) {
       boltDirection = directionAngle;
       bolt.rotation.z = rocket.rotation.z;
       bolt.position.copy(rocket.position);
+      // fudge the bolt position
+      bolt.position.y -= 0.065;
     }
     bolt.userData = {
       fire,

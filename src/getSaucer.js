@@ -48,7 +48,6 @@ function createDeadSaucer(glb) {
   const deadSaucer = glb.clone();
   const material = new THREE.MeshBasicMaterial({
     color: 0xff4444,
-    // wireframe: true,
     transparent: true,
     opacity: 0.25,
   });
@@ -65,16 +64,35 @@ function createDeadSaucer(glb) {
   };
   return deadSaucer;
 }
+function randomizeColor(glb) {
+  const palette = [
+    0x7400b8, 0x6930c3, 0x5e60ce, 0x5390d9, 0x4ea8de, 0x48bfe3, 0x56cfe1,
+    0x64dfdf, 0x72efdd, 0x80ffdb,
+  ];
+  function getRandomMat(colors) {
+    const hex = colors[Math.floor(Math.random() * colors.length)];
+    return new THREE.MeshBasicMaterial({ color: hex });
+  }
+  glb.traverse((o) => {
+    if (o.isMesh) {
+      o.material = getRandomMat(palette);
+    }
+  });
+}
 
 function getSaucer(glb) {
   let saucerGroup = new THREE.Group();
   const ship = glb;
   const size = 0.4;
   ship.scale.set(size, size, size);
-  const startX = 2;
+  const startX = 6;
   let yPos = Math.random() * 8 - 4;
-  let saucerSpeed = -0.01;
+  let saucerSpeed = -0.03;
   saucerGroup.position.set(startX, yPos, 0);
+
+  // color saucer with palette
+  randomizeColor(ship);
+
   saucerGroup.add(ship);
   const deadSaucer = createDeadSaucer(ship);
   saucerGroup.add(deadSaucer);
@@ -89,19 +107,29 @@ function getSaucer(glb) {
 
   const collisionSphere = new THREE.Mesh(geometry, material);
   // saucerGroup.add(collisionSphere); // debug
+
+  let fireSound;
+  function setSoundEffect (sound) {
+    console.log('setting sound effect', sound)
+    fireSound = sound;
+  }
+
   let targetDirection = Math.PI;
   const bolt = getBolt(saucerGroup);
   function fire() {
     const angle = targetDirection; // Math.random() * Math.PI * 2;
     bolt.userData.fire(angle);
+    fireSound.stop();
+    fireSound.play();
   }
+  const screenBounds = new THREE.Vector2();
   let nextTime = 3000;
   function update(t) {
     if (!isTweening) {
       saucerGroup.position.x += saucerSpeed;
       saucerGroup.position.y += Math.sin(t * 0.0025) * 0.005;
       saucerGroup.rotation.y = t * 0.0025;
-      if (saucerGroup.position.x < -5.5) {
+      if (saucerGroup.position.x < -screenBounds.x) {
         saucerGroup.position.x *= -1;
       }
       if (t > nextTime) {
@@ -112,7 +140,7 @@ function getSaucer(glb) {
     bolt.userData.update();
   }
   let isTweening = false;
-  function _playHitAnimation() {
+  function playHitAnimation() {
     if (!isTweening) {
       isTweening = true;
       ship.visible = false;
@@ -128,6 +156,7 @@ function getSaucer(glb) {
           yPos = Math.random() * 8 - 4;
           saucerGroup.position.set(startX, yPos, 0);
           saucerSpeed = -0.01 + Math.random() * -0.01;
+          randomizeColor(ship);
         })
         .start();
     }
@@ -137,7 +166,7 @@ function getSaucer(glb) {
   let counter = 0;
   let blinkCount = 0;
   const maxBlinks = 8;
-  function playHitAnimation() {
+  function _playHitAnimation() {
     isTweening = true;
     ship.visible = false;
     counter += 1;
@@ -169,6 +198,8 @@ function getSaucer(glb) {
     playHitAnimation,
     radius,
     sense,
+    setScreenBounds: (newValue) => screenBounds.copy(newValue),
+    setSoundEffect,
     update,
   };
   return saucerGroup;

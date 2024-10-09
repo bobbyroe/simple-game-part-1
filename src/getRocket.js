@@ -4,26 +4,43 @@ import getRocketBolt from "./getRocketBolt.js";
 let goalThrustMag = 0;
 let isThrusting = false;
 
-function getBolts (rocket) {
+function getBolts(rocket) {
   const numBolts = 10;
   const bolts = [];
-  for ( let i = 0; i < numBolts; i += 1) {
+  for (let i = 0; i < numBolts; i += 1) {
     let bolt = getRocketBolt(rocket);
     bolts.push(bolt);
   }
   rocket.userData.bolts = bolts;
   return bolts;
 }
-
+function randomizeColor(glb) {
+  const palette = [
+    0x03071e, 0x370617, 0x6a040f, 0x9d0208, 0xd00000, 0xdc2f02, 0xe85d04,
+    0xf48c06, 0xfaa307, 0xffba08,
+  ];
+  function getRandomMat(colors) {
+    const hex = colors[Math.floor(Math.random() * colors.length)];
+    return new THREE.MeshBasicMaterial({ color: hex });
+  }
+  glb.traverse((o) => {
+    if (o.isMesh) {
+      o.material = getRandomMat(palette);
+    }
+  });
+}
 function getRocket(glb) {
+  const rocket = glb;
   let rocketGroup = new THREE.Group();
   const size = 1.35;
   glb.scale.set(size, size, size);
   glb.position.set(-0.05, -0.5, 0);
-  rocketGroup.add(glb);
+  randomizeColor(rocket);
+
+  rocketGroup.add(rocket);
   rocketGroup.position.set(-3, 0, 0);
 
-  // collision sphere
+  // *visible* collision sphere
   let directionAngle = 0;
   const radius = 0.18;
   const geometry = new THREE.IcosahedronGeometry(radius, 4);
@@ -37,7 +54,7 @@ function getRocket(glb) {
 
   const thrustFireGeo = new THREE.OctahedronGeometry(0.1, 0);
   const thrustFireMat = new THREE.MeshBasicMaterial({
-    color: 0xFFFF00,
+    color: 0xffff00,
   });
   const thrustFireMesh = new THREE.Mesh(thrustFireGeo, thrustFireMat);
   thrustFireMesh.scale.y = 2;
@@ -52,7 +69,6 @@ function getRocket(glb) {
   let isRotationgLeft = false;
   let isRotationgRight = false;
   function rotateLeft(isTrue) {
-    console.log("rotateLeft", isTrue);
     isRotationgLeft = isTrue;
   }
   function rotateRight(isTrue) {
@@ -62,13 +78,13 @@ function getRocket(glb) {
     isThrusting = isOn;
     thrustFireMesh.visible = isOn;
     if (isOn === true) {
-      goalThrustMag += 0.05;
+      goalThrustMag = 0.05;
     } else {
       goalThrustMag = 0;
     }
   }
 
-  const screenBounds = { x: 5.5, y: 4 };
+  const screenBounds = new THREE.Vector2();
   const bolts = getBolts(rocketGroup);
   let boltIndex = 0;
   function fire() {
@@ -78,8 +94,17 @@ function getRocket(glb) {
       boltIndex = 0;
     }
     curBolt?.userData.fire(directionAngle);
+    fireSound.stop();
+    fireSound.play();
     return curBolt;
   }
+
+  let fireSound;
+  function setSoundEffect (sound) {
+    console.log('setting sound effect', sound)
+    fireSound = sound;
+  }
+
   const rotationRate = 0.05;
   function update() {
     if (isRotationgLeft === true) {
@@ -110,7 +135,7 @@ function getRocket(glb) {
     ) {
       rocketGroup.position.y *= -1;
     }
-    bolts.forEach(b => b.userData.update());
+    bolts.forEach((b) => b.userData.update());
   }
 
   let isTweening = false;
@@ -126,6 +151,7 @@ function getRocket(glb) {
           rocketGroup.rotation.set(0, 0, 0);
           rocketGroup.position.set(-3, 0, 0);
           isTweening = false;
+          randomizeColor(rocket);
         })
         .start();
     }
@@ -134,10 +160,12 @@ function getRocket(glb) {
     bolts,
     fire,
     getBolts: () => bolts,
+    setSoundEffect,
     playHitAnimation,
     radius,
     rotateLeft,
     rotateRight,
+    setScreenBounds: (newValue) => screenBounds.copy(newValue),
     thrust,
     update,
   };
